@@ -1,0 +1,14 @@
+# 幸运转盘 · 独立仓库 .gitignore
+# 保留 vendor 解析库（离线导入功能依赖，必须入仓库）
+# !vendor/xlsx.full.min.js
+# !vendor/jszip.min.js
+
+# --- 杂项（本项目没有，但防止误加） ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.tmp
+*.bak
+*.orig
+.tmp-*

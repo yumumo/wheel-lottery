@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fff3e0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>🎡 幸运转盘</title>
+<link rel="stylesheet" href="style.css">
+<!-- 导入解析库：先尝试本地 vendor（离线可用），失败则回退 CDN（需联网） -->
+<script src="vendor/xlsx.full.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'"></script>
+<script src="vendor/jszip.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'"></script>
+<script src="parser.js"></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+
+<header class="top">
+  <h1>🎡 幸运转盘</h1>
+  <p class="sub">卡通 · 简约 · 概率自由</p>
+</header>
+
+<main>
+  <!-- 转盘 -->
+  <section class="wheel-card">
+    <div class="wheel-wrap">
+      <canvas id="wheel"></canvas>
+      <div class="pointer" aria-hidden="true"></div>
+      <button id="spinBtn" class="spin-btn">🎯 开抽</button>
+    </div>
+  </section>
+
+  <!-- 工具按钮 -->
+  <section class="panel">
+    <div class="btn-row">
+      <button id="importBtn" class="btn">📥 导入</button>
+      <button id="equalBtn" class="btn">⚖️ 均分</button>
+      <button id="recolorBtn" class="btn">🌈 换色</button>
+      <button id="clearBtn" class="btn danger">🗑️ 清空</button>
+    </div>
+  </section>
+
+  <!-- 选项列表 -->
+  <section class="panel">
+    <div class="list-head">
+      <h2>选项 <span id="count" class="count">0</span></h2>
+      <p class="hint">名称可自由修改；权重数字决定该扇区概率占比</p>
+    </div>
+    <div id="list" class="list"></div>
+    <button id="addBtn" class="btn add">＋ 添加选项</button>
+  </section>
+</main>
+
+<!-- 导入弹窗 -->
+<dialog id="importDialog" class="modal">
+  <form method="dialog" class="modal-box">
+    <button class="modal-close" value="cancel" formnovalidate aria-label="关闭">✕</button>
+    <h3>📥 一键导入</h3>
+
+    <div class="fmt">
+      <h4>📄 txt / csv</h4>
+      <p>每行一个选项。可选权重写法（不写则均分）：</p>
+      <pre>吃饭=3
+睡觉
+学习=2</pre>
+
+      <h4>📊 Excel（.xlsx / .xls）</h4>
+      <p>读第一个工作表：<b>A 列</b>为选项名称，<b>B 列</b>为权重（可空，默认 1）。第一行是“名称 / 选项 / 内容”这类表头会自动跳过。</p>
+      <pre>名称   权重
+吃饭    3
+睡觉    1</pre>
+
+      <h4>📝 Word（.docx）</h4>
+      <p>每个<b>段落</b>一个选项，也支持 <code>名称=权重</code> 或 <code>名称,权重</code> 行内写法。</p>
+
+      <p class="note">权重分隔符支持 <code>=</code> <code>，</code> <code>,</code> <code>|</code>；<code>#</code> 开头行为注释；最多 60 项。</p>
+    </div>
+
+    <label class="file-btn btn">
+      📂 选择文件
+      <input id="fileInput" type="file" accept=".txt,.csv,.xlsx,.xls,.docx" hidden>
+    </label>
+    <p id="importMsg" class="msg"></p>
+    <div class="modal-actions">
+      <button id="replaceBtn" type="button" class="btn">替换现有</button>
+      <button id="appendBtn" type="button" class="btn ghost">追加到末尾</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 结果弹窗 -->
+<dialog id="resultDialog" class="modal result-modal">
+  <div class="modal-box center">
+    <div class="confetti">🎉</div>
+    <h3>恭喜抽中</h3>
+    <p id="resultText" class="result-text"></p>
+    <div class="modal-actions">
+      <button id="againBtn" class="btn">🔄 再抽一次</button>
+      <button id="resultCloseBtn" class="btn ghost" value="close">完成</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" role="status"></div>
+
+</body>
+</html>
