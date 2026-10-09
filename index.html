@@ -39,6 +39,7 @@
       <button id="recolorBtn" class="btn">🌈 换色</button>
       <button id="clearBtn" class="btn danger">🗑️ 清空</button>
     </div>
+    <button id="presetBtn" class="btn wide">📚 方案库 · 保存 / 调用</button>
   </section>
 
   <!-- 选项列表 -->
@@ -87,6 +88,23 @@
       <button id="appendBtn" type="button" class="btn ghost">追加到末尾</button>
     </div>
   </form>
+</dialog>
+
+<!-- 方案库弹窗 -->
+<dialog id="presetDialog" class="modal">
+  <div class="modal-box">
+    <button id="presetClose" class="modal-close" aria-label="关闭">✕</button>
+    <h3>📚 方案库</h3>
+    <p class="preset-tip">把当前选项存成方案，下次一键调用。</p>
+
+    <div class="preset-save">
+      <input id="presetName" type="text" maxlength="20" placeholder="方案名，如：午饭吃什么" aria-label="方案名">
+      <button id="presetSaveBtn" class="btn">💾 保存当前</button>
+    </div>
+
+    <p id="presetMsg" class="msg"></p>
+    <div id="presetList" class="preset-list"></div>
+  </div>
 </dialog>
 
 <!-- 结果弹窗 -->

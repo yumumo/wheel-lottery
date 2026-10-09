@@ -2,7 +2,9 @@
 'use strict';
 (() => {
   const MAX_ITEMS = 60;
+  const MAX_PRESETS = 30;
   const STORE_KEY = 'wheel-items-v1';
+  const PRESET_KEY = 'wheel-presets-v1';
 
   // 马卡龙色板
   const PALETTE = [
@@ -12,6 +14,7 @@
 
   const state = {
     items: [],
+    presets: [],       // 已保存的方案库
     totalAngle: 0,      // 当前累计旋转角（rad）
     spinning: false,
     lastWin: -1,
@@ -31,21 +34,24 @@
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state.items)); } catch (e) { /* 隐私模式忽略 */ }
   }
+
+  // 把任意来源的原始数据规整成合法 items。
+  // 当前配置与方案存档共用同一份校验，避免两处规则漂移。
+  function sanitizeItems(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((it) => it && typeof it.label === 'string' && it.label.length <= 100)
+      .slice(0, MAX_ITEMS)
+      .map((it) => ({
+        label: it.label,
+        weight: (Number(it.weight) > 0 ? Number(it.weight) : 1),
+        color: /^#[0-9a-fA-F]{6}$/.test(it.color || '') ? it.color : pickColor(0),
+      }));
+  }
+
   function load() {
     try {
-      const raw = localStorage.getItem(STORE_KEY);
-      if (raw) {
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) {
-          state.items = arr
-            .filter((it) => it && typeof it.label === 'string')
-            .map((it) => ({
-              label: it.label,
-              weight: (Number(it.weight) > 0 ? Number(it.weight) : 1),
-              color: /^#[0-9a-fA-F]{6}$/.test(it.color || '') ? it.color : pickColor(0),
-            }));
-        }
-      }
+      state.items = sanitizeItems(JSON.parse(localStorage.getItem(STORE_KEY) || 'null'));
     } catch (e) { /* 数据损坏则从默认开始 */ }
   }
 
@@ -497,8 +503,125 @@
     });
   }
 
+  /* ---------------- 方案库 ---------------- */
+  // 方案是当前配置的快照：名字 + items。存 localStorage，跟随用户，不受
+  // 「清空」影响（清空只动当前转盘）。
+  function loadPresets() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(PRESET_KEY) || 'null');
+      if (Array.isArray(arr)) {
+        state.presets = arr
+          .filter((p) => p && typeof p.name === 'string')
+          .slice(0, MAX_PRESETS)
+          .map((p, i) => ({
+            id: typeof p.id === 'string' && p.id ? p.id : 'p' + i + '_' + Date.now(),
+            name: p.name.slice(0, 20),
+            items: sanitizeItems(p.items),
+          }));
+      }
+    } catch (e) { /* 损坏则方案库为空 */ }
+  }
+  function savePresets() {
+    try { localStorage.setItem(PRESET_KEY, JSON.stringify(state.presets)); } catch (e) { /* 存储满则忽略 */ }
+  }
+
+  function savePreset() {
+    if (!state.items.length) { presetMsg('当前没有选项，先添加或导入'); return; }
+    const name = ($('presetName').value || '').trim();
+    if (!name) { presetMsg('请先给方案起个名字'); return; }
+    if (state.presets.length >= MAX_PRESETS) { presetMsg(`最多 ${MAX_PRESETS} 个方案`); return; }
+    state.presets.unshift({
+      id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name,
+      items: state.items.map((it) => ({ label: it.label, weight: it.weight, color: it.color })),
+    });
+    savePresets();
+    $('presetName').value = '';
+    renderPresets();
+    presetMsg(`已保存「${name}」（${state.items.length} 项）`);
+    toast(`方案「${name}」已保存 💾`);
+  }
+
+  function loadPreset(id) {
+    const p = state.presets.find((x) => x.id === id);
+    if (!p) return;
+    state.items = p.items.map((it) => ({ label: it.label, weight: it.weight, color: it.color }));
+    state.totalAngle = 0;
+    state.lastWin = -1;
+    renderList(); draw(); save();
+    closeDialog(presetDialog);
+    toast(`已调用「${p.name}」📚`);
+  }
+
+  function deletePreset(id) {
+    const p = state.presets.find((x) => x.id === id);
+    if (!p) return;
+    if (!confirm(`删除方案「${p.name}」？`)) return;
+    state.presets = state.presets.filter((x) => x.id !== id);
+    savePresets();
+    renderPresets();
+    toast(`已删除「${p.name}」`);
+  }
+
+  function renderPresets() {
+    const box = $('presetList');
+    box.textContent = '';
+    if (!state.presets.length) {
+      const empty = document.createElement('div');
+      empty.className = 'preset-empty';
+      empty.textContent = '还没有方案～\n配好选项后在上方命名保存';
+      box.appendChild(empty);
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    state.presets.forEach((p) => {
+      const row = document.createElement('div');
+      row.className = 'preset';
+      const info = document.createElement('div');
+      const name = document.createElement('span');
+      name.className = 'preset-name';
+      name.textContent = p.name;                       // textContent：名字是用户输入，不拼 innerHTML
+      const sub = document.createElement('span');
+      sub.className = 'preset-sub';
+      sub.textContent = p.items.length + ' 项';
+      info.append(name, sub);
+      const use = document.createElement('button');
+      use.className = 'btn';
+      use.textContent = '▶ 调用';
+      use.addEventListener('click', () => loadPreset(p.id));
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = '✕';
+      del.setAttribute('aria-label', '删除方案 ' + p.name);
+      del.addEventListener('click', () => deletePreset(p.id));
+      row.append(info, use, del);
+      frag.appendChild(row);
+    });
+    box.appendChild(frag);
+  }
+
+  function presetMsg(text, ok) {
+    const el = $('presetMsg');
+    el.textContent = text;
+    el.className = ok ? 'msg ok' : 'msg';
+  }
+
+  const presetDialog = $('presetDialog');
+  $('presetBtn').addEventListener('click', () => {
+    presetMsg('');
+    $('presetName').value = '';
+    renderPresets();
+    openDialog(presetDialog);
+  });
+  $('presetSaveBtn').addEventListener('click', savePreset);
+  $('presetClose').addEventListener('click', () => closeDialog(presetDialog));
+  $('presetName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); savePreset(); }
+  });
+
   /* ---------------- 初始化 ---------------- */
   load();
+  loadPresets();
   renderList();
   draw();
   let resizeTimer = 0;
