@@ -74,22 +74,57 @@
 
 ## 技术说明
 
-- 纯前端，无构建步骤：`index.html` + `style.css` + `parser.js`（导入解析纯函数）+ `app.js`（主逻辑）+ `vendor/`（可选离线库）。
-- 概率实现：扇区角度 = 权重占比；抽奖按权重加权随机选中扇区，再把指针精确停在扇区中点，显示与概率严格一致。
+- 纯前端，无构建步骤：`index.html` + `style.css` + `parser.js`（导入解析纯函数）+ `app.js`（主逻辑）+ `vendor/`（离线解析库）。
+- 概率实现：扇区角度 = 权重占比；抽奖按权重加权随机选中扇区，指针停在该扇区内的随机位置（20%~80% 区间，避开边缘），显示与概率严格一致。
 - 数据存 `localStorage`（键 `wheel-items-v1`），重开不丢。
 - `parser.js` 可在 Node 里单测（工作区为 `type:module`，用 `.cjs` require 后读 `globalThis.WheelParser`）。
+
+## 📦 打包成 Android APK
+
+仓库自带手工构建脚本，**不需要 Gradle、不需要联网**（只用 Android SDK 的 aapt2/d8/apksigner 和 JDK）。
+
+```powershell
+cd android
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build-apk.ps1
+# 产物：android/dist/wheel-lottery.apk
+```
+
+安装到手机（数据线连上、手机开 USB 调试后）：
+
+```powershell
+adb install -r android\dist\wheel-lottery.apk
+```
+
+也可以直接把 APK 传到手机，用文件管理器点击安装（需允许"安装未知来源应用"）。
+
+**实现说明**：
+
+- `android/java/com/luckywheel/MainActivity.java` 是一个 WebView 壳。Web 内容从 `assets/www/` 通过 `shouldInterceptRequest` 映射到虚拟 `https://wheel.local` 源——**不用 `file:///android_asset`**，因为 file:// 的 origin 不稳定，localStorage 会在重启后丢失，用户的选项就没了。
+- 实现了 `onShowFileChooser`，否则「导入」按钮点了没反应；并在 `file.name` 缺失时退回 MIME 判断扩展名（Android 通过 `content://` 选文件常常拿不到文件名）。
+- 构建脚本带**构建后自检**：条目名出现反斜杠、或缺少 `AndroidManifest.xml` / `classes.dex` / 任一 web 资源，直接构建失败——防止"编译通过但装上白屏"的 APK 流出。
+- 签名用的是自动生成的 **调试签名**（`android/keystore/`，已 gitignore）。要上架应用商店需换成自己的 release keystore。
+- 改动网页代码后重新跑一次构建脚本即可，APK 会覆盖更新（签名一致才能覆盖安装）。
 
 ## 目录结构
 
 ```
 wheel-lottery/
-├── index.html        # 入口页面（含页面结构、导入格式弹窗）
-├── style.css         # 卡通简约样式
-├── parser.js         # txt/csv/Excel/Word 解析（纯函数）
-├── app.js            # 转盘绘制、抽奖动画、交互、localStorage
-└── vendor/           # 可选：xlsx / jszip 本地库（离线导入用）
+├── index.html            # 入口页面（含页面结构、导入格式弹窗）
+├── style.css             # 卡通简约样式
+├── parser.js             # txt/csv/Excel/Word 解析（纯函数）
+├── app.js                # 转盘绘制、抽奖动画、交互、localStorage
+├── vendor/               # xlsx / jszip 本地库（离线导入用）
+├── push.bat              # 一键提交 + 推送 GitHub
+└── android/              # APK 构建（无需 Gradle）
+    ├── build-apk.ps1     # 构建脚本
+    ├── AndroidManifest.xml
+    ├── java/             # WebView 壳源码
+    ├── res/drawable/     # 应用图标（vector）
+    └── dist/             # 构建产物（gitignored）
 ```
 
-## 打包成真 App（可选）
+## 其他打包方式
 
-想要独立安装包（APK / IPA）时，用 [Capacitor](https://capacitorjs.com/) 或 [Tauri Mobile](https://tauri.app/) 把 `index.html` 包一层即可，代码无需改动。PWA 方式"添加到主屏幕"也能获得全屏 + 桌面图标体验。
+- **PWA**："添加到主屏幕"即可全屏运行 + 桌面图标，无需安装包。
+- **iOS**：用 Capacitor 或 Tauri Mobile 包一层即可，网页代码无需改动。
+- **Android**：直接用上面的 `build-apk.ps1`，或改用 Gradle + Capacitor 走标准 Android 工程。

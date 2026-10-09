@@ -3,6 +3,13 @@
 # !vendor/xlsx.full.min.js
 # !vendor/jszip.min.js
 
+# --- Android 打包产物与密钥（不进仓库） ---
+android/build/
+android/dist/
+android/keystore/
+*.keystore
+*.jks
+
 # --- 杂项（本项目没有，但防止误加） ---
 .DS_Store
 Thumbs.db

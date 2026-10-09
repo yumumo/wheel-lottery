@@ -436,24 +436,38 @@
   $('replaceBtn').addEventListener('click', () => applyRows('replace'));
   $('appendBtn').addEventListener('click', () => applyRows('append'));
 
+  // 由 File 推断格式扩展名。
+  // Android WebView 经 content:// 选文件时 file.name 常为空或无扩展名，
+  // 此时退回 MIME 判断，否则导入功能在 APK 里会失效。
+  function extOf(file) {
+    const m = (file.name || '').toLowerCase().match(/\.(txt|csv|xlsx|xls|docx)$/);
+    if (m) return m[1];
+    const t = (file.type || '').toLowerCase();
+    if (!t) return null;
+    if (t.includes('spreadsheetml') || t.includes('ms-excel')) return 'xlsx';
+    if (t.includes('wordprocessingml') || t.includes('msword')) return 'docx';
+    if (t.includes('csv')) return 'csv';
+    if (t.startsWith('text/')) return 'txt';
+    return null;
+  }
+
   async function readFileRows(file) {
-    const name = (file.name || '').toLowerCase();
-    if (name.endsWith('.txt') || name.endsWith('.csv')) {
-      const text = await file.text();
-      return WheelParser.parseText(text);
+    const ext = extOf(file);
+    if (ext === 'txt' || ext === 'csv') {
+      return WheelParser.parseText(await readAsText(file));
     }
-    if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    if (ext === 'xlsx' || ext === 'xls') {
       if (!window.XLSX) throw new Error('解析库未加载，请联网后重试');
-      const buf = await file.arrayBuffer();
+      const buf = await readAsBuffer(file);
       const wb = XLSX.read(buf, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       if (!ws) throw new Error('Excel 文件里没有工作表');
       const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
       return WheelParser.parseExcel(aoa);
     }
-    if (name.endsWith('.docx')) {
+    if (ext === 'docx') {
       if (!window.JSZip) throw new Error('解析库未加载，请联网后重试');
-      const buf = await file.arrayBuffer();
+      const buf = await readAsBuffer(file);
       const zip = await JSZip.loadAsync(buf);
       const xmlFile = zip.file('word/document.xml');
       if (!xmlFile) throw new Error('不是有效的 .docx 文件');
@@ -461,6 +475,26 @@
       return WheelParser.parseDocxXML(xml);
     }
     throw new Error('仅支持 .txt / .csv / .xlsx / .xls / .docx');
+  }
+
+  // File.text()/arrayBuffer() 在较旧的 Android WebView 上缺失，退回 FileReader
+  function readAsText(file) {
+    if (file.text) return file.text();
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = () => reject(fr.error || new Error('读取失败'));
+      fr.readAsText(file, 'utf-8');
+    });
+  }
+  function readAsBuffer(file) {
+    if (file.arrayBuffer) return file.arrayBuffer();
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => reject(fr.error || new Error('读取失败'));
+      fr.readAsArrayBuffer(file);
+    });
   }
 
   /* ---------------- 初始化 ---------------- */

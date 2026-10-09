@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 外圈红环 -->
+    <path
+        android:strokeColor="#FF6B6B"
+        android:strokeWidth="5"
+        android:fillColor="#00000000"
+        android:pathData="M54,6 A48,48 0 1 1 54,102 A48,48 0 1 1 54,6 Z" />
+
+    <!-- 四色扇区 -->
+    <path android:fillColor="#FFB3BA" android:pathData="M54,54 L54,6 A48,48 0 0 1 102,54 Z" />
+    <path android:fillColor="#BAE1FF" android:pathData="M54,54 L102,54 A48,48 0 0 1 54,102 Z" />
+    <path android:fillColor="#FFFFBA" android:pathData="M54,54 L54,102 A48,48 0 0 1 6,54 Z" />
+    <path android:fillColor="#BAFFC9" android:pathData="M54,54 L6,54 A48,48 0 0 1 54,6 Z" />
+
+    <!-- 分隔线 -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M54,6 L54,102 M6,54 L102,54" />
+
+    <!-- 中心按钮 -->
+    <path android:fillColor="#FFFFFF" android:pathData="M54,38 A16,16 0 1 1 54,70 A16,16 0 1 1 54,38 Z" />
+    <path android:fillColor="#FF8FAB" android:pathData="M54,44 A10,10 0 1 1 54,64 A10,10 0 1 1 54,44 Z" />
+
+    <!-- 顶部指针 -->
+    <path android:fillColor="#FF6B6B" android:pathData="M54,0 L45,14 L63,14 Z" />
+</vector>
